@@ -416,7 +416,7 @@ class PlantDiseaseDetector:
     def load_class_names(self):
         """Load class names from file."""
         try:
-            with open('models/class_names.txt', 'r') as f:
+            with open("class_names.txt", "r") as f:
                 self.class_names = [line.strip() for line in f.readlines()]
             print(f"Loaded {len(self.class_names)} classes")
         except FileNotFoundError:
@@ -545,10 +545,7 @@ def main():
                 predicted_class, confidence, tips = detector.predict(image_path)
                 if predicted_class:
                     st.success(f"Result: {predicted_class} ({confidence*100:.2f}% confidence)")
-                    # st.subheader("Treatment:")
-                    # st.write(tips['treatment'])
-                    # st.subheader("Prevention:")
-                    # st.write(tips['prevention'])
+              
                     st.markdown("---")
                     st.markdown("### Treatment Tips")
                     st.info(tips['treatment'])
