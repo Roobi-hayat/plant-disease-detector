@@ -425,7 +425,7 @@ class PlantDiseaseDetector:
     def load_trained_model(self):
         """Load a pre-trained model."""
         try:
-            self.model = load_model(MODEL_PATH)
+            self.model = load_model("plant_disease_model.h5")
             self.load_class_names()
             print(f"Model loaded from {MODEL_PATH}")
             return True
