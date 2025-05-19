@@ -47,34 +47,60 @@ st.markdown("### Step 1: Capture Image from Back Camera")
 
 # Camera capture with base64 download
 components.html("""
-<div style="text-align: center;">
-    <video id="video" autoplay playsinline width="100%"></video>
-    <br>
-    <button onclick="capture()">📸 Capture</button>
-    <a id="downloadLink" style="display:none;">Download Image</a>
+<style>
+  #capture-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  video {
+    max-width: 100%;
+    height: auto;
+  }
+  #capture-btn {
+    margin-top: 10px;
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  #downloadLink {
+    margin-top: 10px;
+    display: none;
+  }
+</style>
+
+<div id="capture-container">
+    <video id="video" autoplay playsinline></video>
     <canvas id="canvas" style="display:none;"></canvas>
+    <button id="capture-btn" onclick="capture()">📸 Capture</button>
+    <a id="downloadLink">Download Image</a>
 </div>
+
 <script>
-    const video = document.getElementById('video');
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-        .then(stream => video.srcObject = stream)
-        .catch(err => console.error("Camera error:", err));
+  const video = document.getElementById('video');
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+    .then(stream => video.srcObject = stream)
+    .catch(err => console.error("Camera error:", err));
 
-    function capture() {
-        const canvas = document.getElementById('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        const dataUrl = canvas.toDataURL('image/jpeg');
+  function capture() {
+    const canvas = document.getElementById('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg');
 
-        const link = document.getElementById('downloadLink');
-        link.href = dataUrl;
-        link.download = 'plant.jpg';
-        link.textContent = '📥 Download Captured Image';
-        link.style.display = 'block';
-    }
+    const link = document.getElementById('downloadLink');
+    link.href = dataUrl;
+    link.download = 'plant.jpg';
+    link.textContent = '📥 Download Captured Image';
+    link.style.display = 'block';
+  }
 </script>
-""", height=480)
+""", height=500)
 
 st.markdown("---")
 st.markdown("### Step 2: Upload Captured Image")
