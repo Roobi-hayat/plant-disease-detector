@@ -535,7 +535,7 @@ def main():
                     st.write(f"Treatment: {tips['treatment']}")
                     st.write(f"Prevention: {tips['prevention']}")
     else:
-        uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png"])
+        uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"])
         if uploaded_file is not None:
          st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
          with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
