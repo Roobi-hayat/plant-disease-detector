@@ -524,7 +524,7 @@ def main():
     st.write("### Take a picture or upload an image of a leaf")
     use_camera = st.checkbox("Use Camera")
     if use_camera:
-        picture = st.camera_input("Take a picture")
+        picture = st.camera_input("Take a picture", camera_label="rear")
         if picture:
             with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
                 tmp_file.write(picture.getvalue())
