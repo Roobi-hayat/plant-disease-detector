@@ -39,6 +39,60 @@ Use the AI-powered detector to diagnose plant diseases from images and get care 
 
 st.sidebar.markdown("---")
 
+
+
+
+st.markdown("### Step 1: Capture Image from Back Camera")
+
+# Camera capture with base64 download
+components.html("""
+<div style="text-align: center;">
+    <video id="video" autoplay playsinline width="100%"></video>
+    <br>
+    <button onclick="capture()">📸 Capture</button>
+    <a id="downloadLink" style="display:none;">Download Image</a>
+    <canvas id="canvas" style="display:none;"></canvas>
+</div>
+<script>
+    const video = document.getElementById('video');
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(stream => video.srcObject = stream)
+        .catch(err => console.error("Camera error:", err));
+
+    function capture() {
+        const canvas = document.getElementById('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg');
+
+        const link = document.getElementById('downloadLink');
+        link.href = dataUrl;
+        link.download = 'plant.jpg';
+        link.textContent = '📥 Download Captured Image';
+        link.style.display = 'block';
+    }
+</script>
+""", height=480)
+
+st.markdown("---")
+st.markdown("### Step 2: Upload Captured Image")
+
+uploaded_file = st.file_uploader("Upload the captured image", type=["jpg", "jpeg", "png"])
+
+if uploaded_file:
+    image = Image.open(uploaded_file)
+    st.image(image, caption="Uploaded Image", use_column_width=True)
+    
+    # 🔍 AI prediction placeholder
+    st.success("✅ Image uploaded! You can now run your AI prediction.")
+    # result = your_model.predict(...)
+    # st.write(result)
+else:
+    st.info("📷 Capture and upload a plant image to continue.")
+
+
+
 # Main header
 st.markdown("""
     <style>
