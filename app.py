@@ -9,7 +9,6 @@ from PIL import Image
 import sqlite3
 import streamlit as st
 import tempfile
-import streamlit.components.v1 as components
 
 # Global variables
 IMAGE_SIZE = 224
@@ -39,86 +38,6 @@ Use the AI-powered detector to diagnose plant diseases from images and get care 
 """)
 
 st.sidebar.markdown("---")
-
-
-
-
-st.markdown("### Step 1: Capture Image from Back Camera")
-
-# Camera capture with base64 download
-components.html("""
-<style>
-  #capture-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  video {
-    max-width: 100%;
-    height: auto;
-  }
-  #capture-btn {
-    margin-top: 10px;
-    padding: 10px 20px;
-    font-size: 16px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-  #downloadLink {
-    margin-top: 10px;
-    display: none;
-  }
-</style>
-
-<div id="capture-container">
-    <video id="video" autoplay playsinline></video>
-    <canvas id="canvas" style="display:none;"></canvas>
-    <button id="capture-btn" onclick="capture()">📸 Capture</button>
-    <a id="downloadLink">Download Image</a>
-</div>
-
-<script>
-  const video = document.getElementById('video');
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-    .then(stream => video.srcObject = stream)
-    .catch(err => console.error("Camera error:", err));
-
-  function capture() {
-    const canvas = document.getElementById('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-    const dataUrl = canvas.toDataURL('image/jpeg');
-
-    const link = document.getElementById('downloadLink');
-    link.href = dataUrl;
-    link.download = 'plant.jpg';
-    link.textContent = '📥 Download Captured Image';
-    link.style.display = 'block';
-  }
-</script>
-""", height=500)
-
-st.markdown("---")
-st.markdown("### Step 2: Upload Captured Image")
-
-uploaded_file = st.file_uploader("Upload the captured image", type=["jpg", "jpeg", "png"])
-
-if uploaded_file:
-    image = Image.open(uploaded_file)
-    st.image(image, caption="Uploaded Image", use_column_width=True)
-    
-    # 🔍 AI prediction placeholder
-    st.success("✅ Image uploaded! You can now run your AI prediction.")
-    # result = your_model.predict(...)
-    # st.write(result)
-else:
-    st.info("📷 Capture and upload a plant image to continue.")
-
-
 
 # Main header
 st.markdown("""
@@ -650,5 +569,5 @@ def main():
 
 
 if __name__ == "__main__":
-    
+
     main()
