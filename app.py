@@ -9,6 +9,7 @@ from PIL import Image
 import sqlite3
 import streamlit as st
 import tempfile
+import streamlit.components.v1 as components
 
 # Global variables
 IMAGE_SIZE = 224
