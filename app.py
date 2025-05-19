@@ -10,6 +10,8 @@ import sqlite3
 import streamlit as st
 import tempfile
 import traceback
+import base64
+from io import BytesIO
 
 # Global variables
 IMAGE_SIZE = 224
@@ -34,7 +36,7 @@ Use the AI-powered detector to diagnose plant diseases from images and get care 
 
 **Steps:**
 1. Select the plant type
-2. Upload a plant leaf image
+2. Upload a plant leaf image or use camera
 3. Get diagnosis and treatment advice
 """)
 
@@ -68,6 +70,24 @@ st.markdown("""
     .stButton>button:hover {
         background-color: #3CB371;
         color: white;
+    }
+    .camera-container {
+        width: 100%;
+        max-width: 640px;
+        margin: 0 auto;
+        position: relative;
+    }
+    #video-element {
+        width: 100%;
+        border-radius: 10px;
+        border: 2px solid #2E8B57;
+    }
+    #canvas-element {
+        display: none;
+    }
+    .capture-btn {
+        margin-top: 10px;
+        text-align: center;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -355,6 +375,28 @@ class PlantDiseaseDetector:
             print(f"Error predicting image: {str(e)}")
             return None, None, None
 
+    def predict_from_base64(self, base64_image):
+        """Predict disease from base64 image data."""
+        if not self.model:
+            print("Attempting to load model...")
+            if not self.load_trained_model():
+                print("Failed to load model")
+                return None, None, None
+            
+        try:
+            # Decode base64 to image
+            image_data = base64.b64decode(base64_image.split(',')[1])
+            image = Image.open(BytesIO(image_data))
+            
+            # Save to temp file for processing
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
+                image.save(tmp_file.name)
+                return self.predict(tmp_file.name)
+        except Exception as e:
+            print(f"Error predicting from base64: {str(e)}")
+            print(traceback.format_exc())
+            return None, None, None
+
     def parse_class_name(self, class_name):
         """Parse the class name to extract plant type and disease condition."""
         parts = class_name.split('___') if '___' in class_name else class_name.split('_')
@@ -374,69 +416,243 @@ def main():
         st.error("No trained model found. Please train a model first.")
         return
 
-    #st.title("Plant Disease Detector")
     st.markdown('<div class="main-title">AI Plant Disease Detector & Care Advisor</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-text">Upload a leaf image to detect diseases and get treatment & prevention tips</div>', unsafe_allow_html=True)
 
-    
     # Add a decorative separator
     st.markdown("<hr style='border: 1px solid #ccc;' />", unsafe_allow_html=True) 
-
     
     plant_type = st.selectbox("Select Plant Type", [""] + PLANT_TYPES)
     if plant_type:
         detector.set_plant_type(plant_type)
 
     st.write("### Take a picture or upload an image of a leaf")
-    use_camera = st.checkbox("Use Camera")
-    if use_camera:
-        picture = st.camera_input("Take a picture")
-        if picture:
+    
+    tab1, tab2 = st.tabs(["Camera", "Upload"])
+    
+    with tab1:
+        # Custom camera implementation with back camera support
+        st.markdown("""
+        <div class="camera-container">
+            <video id="video-element" autoplay playsinline></video>
+            <canvas id="canvas-element"></canvas>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # JavaScript for camera handling
+        st.markdown("""
+        <script>
+            // Wait for DOM to load
+            document.addEventListener('DOMContentLoaded', function() {
+                const videoElement = document.getElementById('video-element');
+                const canvasElement = document.getElementById('canvas-element');
+                
+                // Set up canvas
+                canvasElement.width = 640;
+                canvasElement.height = 480;
+                
+                // Access the back camera by default
+                async function startCamera() {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            video: { 
+                                facingMode: { exact: "environment" } // This forces the back camera
+                            },
+                            audio: false
+                        });
+                        videoElement.srcObject = stream;
+                    } catch (err) {
+                        // If back camera fails, try the default camera
+                        console.error("Back camera not available: ", err);
+                        try {
+                            const stream = await navigator.mediaDevices.getUserMedia({
+                                video: true,
+                                audio: false
+                            });
+                            videoElement.srcObject = stream;
+                            console.log("Using default camera");
+                        } catch (fallbackErr) {
+                            console.error("Camera access failed: ", fallbackErr);
+                            // Inform the user
+                            const cameraContainer = document.querySelector('.camera-container');
+                            cameraContainer.innerHTML = '<div style="color: red; text-align: center;">Camera access denied or not available. Please use the Upload tab.</div>';
+                        }
+                    }
+                }
+                
+                // Start camera when the page loads
+                startCamera();
+            });
+        </script>
+        """, unsafe_allow_html=True)
+        
+        # Capture button
+        capture_btn = st.button("Capture Image")
+        
+        # Handle the captured image
+        if 'camera_image' not in st.session_state:
+            st.session_state.camera_image = None
+            
+        # Let's use a simpler approach with a file uploader
+        if capture_btn:
+            st.markdown("""
+            <div id="capture-result" style="display:none"></div>
+            <script>
+                // Capture image when button is clicked
+                const videoElement = document.getElementById('video-element');
+                const canvasElement = document.getElementById('canvas-element');
+                const resultElement = document.getElementById('capture-result');
+                
+                if (videoElement && canvasElement) {
+                    // Set canvas dimensions
+                    canvasElement.width = videoElement.videoWidth || 640;
+                    canvasElement.height = videoElement.videoHeight || 480;
+                    
+                    // Draw video frame to canvas
+                    const context = canvasElement.getContext('2d');
+                    context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+                    
+                    // Get base64 image data
+                    const imageData = canvasElement.toDataURL('image/jpeg');
+                    
+                    // Store the image in local storage for retrieval
+                    localStorage.setItem('capturedImage', imageData);
+                    
+                    // Signal that image is ready 
+                    resultElement.textContent = "Image captured!";
+                    resultElement.style.display = "block";
+                    
+                    // Force page reload to process the image
+                    window.location.reload();
+                }
+            </script>
+            """, unsafe_allow_html=True)
+        
+        # Check if there's a captured image in localStorage
+        captured_image = st.empty()
+        st.markdown("""
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Check if we have a stored image
+                const capturedImage = localStorage.getItem('capturedImage');
+                if (capturedImage) {
+                    // Create an element to display the status
+                    const statusElement = document.createElement('div');
+                    statusElement.textContent = 'Processing captured image...';
+                    statusElement.style.color = '#2E8B57';
+                    statusElement.style.padding = '10px';
+                    statusElement.style.marginTop = '10px';
+                    statusElement.style.textAlign = 'center';
+                    
+                    // Find the correct container to append to (streamlit's structure)
+                    const containers = document.querySelectorAll('.element-container');
+                    if (containers.length > 0) {
+                        containers[containers.length - 1].appendChild(statusElement);
+                    }
+                    
+                    // Create a form element
+                    const form = document.createElement('form');
+                    form.method = 'post';
+                    form.enctype = 'multipart/form-data';
+                    
+                    // Create input for the image
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'camera_capture';
+                    input.value = capturedImage;
+                    
+                    // Append and submit
+                    form.appendChild(input);
+                    document.body.appendChild(form);
+                    
+                    // Convert base64 to blob for file upload
+                    fetch(capturedImage)
+                        .then(res => res.blob())
+                        .then(blob => {
+                            // Create a file from blob
+                            const file = new File([blob], "captured_image.jpg", {
+                                type: "image/jpeg"
+                            });
+                            
+                            // Create a file list to simulate a file upload
+                            const dataTransfer = new DataTransfer();
+                            dataTransfer.items.add(file);
+                            
+                            // Find the file uploader input element
+                            const fileInputs = document.querySelectorAll('input[type="file"]');
+                            if (fileInputs.length > 0) {
+                                // Set the files property
+                                fileInputs[0].files = dataTransfer.files;
+                                
+                                // Trigger a change event
+                                const event = new Event('change', { bubbles: true });
+                                fileInputs[0].dispatchEvent(event);
+                                
+                                // Clear the stored image
+                                localStorage.removeItem('capturedImage');
+                            }
+                        });
+                }
+            });
+        </script>
+        """, unsafe_allow_html=True)
+        
+        # Add a hidden file uploader for camera captures
+        camera_file = st.file_uploader("Camera Capture", type=["jpg", "png"], key="camera_capture", label_visibility="collapsed")
+        
+        if camera_file is not None:
+            st.image(camera_file, caption="Captured Image", use_container_width=True)
             with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
-                tmp_file.write(picture.getvalue())
+                tmp_file.write(camera_file.getvalue())
                 image_path = tmp_file.name
-                predicted_class, confidence, tips = detector.predict(image_path)
-                if predicted_class:
-                    st.write(f"Result: {predicted_class} ({confidence*100:.2f}% confidence)")
-                    st.write(f"Treatment: {tips['treatment']}")
-                    st.write(f"Prevention: {tips['prevention']}")
-    else:
+                try:
+                    predicted_class, confidence, tips = detector.predict(image_path)
+                    if predicted_class:
+                        st.success(f"Result: {predicted_class} ({confidence*100:.2f}% confidence)")
+                        st.markdown("---")
+                        st.markdown("### Treatment Tips")
+                        st.info(tips['treatment'])
+
+                        st.markdown("### Prevention Advice")
+                        st.warning(tips['prevention'])
+                    else:
+                        st.warning("Could not make a prediction. Please try another image.")
+                except Exception as e:
+                    st.error(f"An error occurred: {str(e)}")
+                    st.error("Please check the console for more details.")
+                    print(f"Error: {traceback.format_exc()}")
+    
+    with tab2:
         uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png"])
         if uploaded_file is not None:
-         st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
-         with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
-            tmp_file.write(uploaded_file.getvalue())
-            image_path = tmp_file.name
-            try:
-                predicted_class, confidence, tips = detector.predict(image_path)
-                if predicted_class:
-                    st.success(f"Result: {predicted_class} ({confidence*100:.2f}% confidence)")
-                    # st.subheader("Treatment:")
-                    # st.write(tips['treatment'])
-                    # st.subheader("Prevention:")
-                    # st.write(tips['prevention'])
-                    st.markdown("---")
-                    st.markdown("### Treatment Tips")
-                    st.info(tips['treatment'])
+            st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
+            with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                tmp_file.write(uploaded_file.getvalue())
+                image_path = tmp_file.name
+                try:
+                    predicted_class, confidence, tips = detector.predict(image_path)
+                    if predicted_class:
+                        st.success(f"Result: {predicted_class} ({confidence*100:.2f}% confidence)")
+                        st.markdown("---")
+                        st.markdown("### Treatment Tips")
+                        st.info(tips['treatment'])
 
-                    st.markdown("### Prevention Advice")
-                    st.warning(tips['prevention'])
+                        st.markdown("### Prevention Advice")
+                        st.warning(tips['prevention'])
+                    else:
+                        st.warning("Could not make a prediction. Please try another image.")
+                except Exception as e:
+                    st.error(f"An error occurred: {str(e)}")
+                    st.error("Please check the console for more details.")
+                    print(f"Error: {traceback.format_exc()}")
 
-                    # Footer
-                    st.markdown("""
-                       <br><hr>
-                       <div style='text-align: center; font-size: 14px;'>
-                       Developed with ❤️ using Streamlit | 2025
-                       </div>
-                       """, unsafe_allow_html=True)
-                else:
-                    st.warning("Could not make a prediction. Please try another image.")
-            except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
-                st.error("Please check the console for more details.")
-                print(f"Error: {traceback.format_exc()}")
+    # Footer
+    st.markdown("""
+        <br><hr>
+        <div style='text-align: center; font-size: 14px;'>
+        Developed with ❤️ using Streamlit | 2025
+        </div>
+        """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
-
-    
     main()
