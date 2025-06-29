@@ -32,3 +32,8 @@ Performance:
 
 Backend:
 Uses SQLite database to store treatment and prevention info
+
+Group Members:
+Roobi Hayat
+Inza Shahid
+Iqra Saleem
