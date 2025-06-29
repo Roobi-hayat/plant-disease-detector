@@ -12,7 +12,7 @@ Plant Support:
   
 Dataset & Preprocessing
 Dataset:
-•	Source: PlantVillage dataset (available on Kaggle)
+•	Source: PlantVillage dataset (on Kaggle (https://www.kaggle.com/datasets/abdallahalidev/plantvillage-dataset?select=color))
 •	Contains 40,000 images
 •	Covers 9 plant types and 24 disease classes
 Preprocessing Steps:
